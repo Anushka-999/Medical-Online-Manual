@@ -1,6 +1,9 @@
+import os
 import joblib
 import pandas as pd
 import re
+import http.server
+import socketserver
 from geolocation_model import GeolocationModel
 from nearby_services_model import NearbyServicesModel
 
@@ -44,7 +47,7 @@ def process_user_input():
     # Load models and vectorizers
     symptom_model, symptom_vectorizer = load_model_and_vectorizer('naive_bayes_modelS.pkl.gz', 'tfidf_vectorizerS.pkl')
     geolocation_model = GeolocationModel()
-    services_model = NearbyServicesModel(api_key="vTUXwsGD6SPVv_cpCDTdI_TPs4IPwdxSbyB_yMjy3W4")
+    services_model = NearbyServicesModel(api_key=os.getenv("HERE_API_KEY"))
 
     # Load remedies and OTC medicines from CSV
     remedies_df, otc_df = load_remedies_and_otc()
@@ -110,6 +113,25 @@ def process_user_input():
     else:
         print("Sorry, I couldn't find that location. Please try again.")
 
-# Start the conversation loop
-process_user_input()
+# Run the main function in the background
+import threading
+conversation_thread = threading.Thread(target=process_user_input)
+conversation_thread.daemon = True
+conversation_thread.start()
+
+# Bind to a port to keep Render deployment active
+PORT = int(os.environ.get("PORT", 8080))
+
+class KeepAliveHandler(http.server.SimpleHTTPRequestHandler):
+    """Simple HTTP server to keep Render service alive."""
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Service is running...")
+
+with socketserver.TCPServer(("", PORT), KeepAliveHandler) as httpd:
+    print(f"Serving at port {PORT}")
+    httpd.serve_forever()
+
 
