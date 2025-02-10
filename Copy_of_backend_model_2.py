@@ -32,6 +32,13 @@ def get_otc_for_disease(disease, otc_df):
         return otc_medicines
     return []
 
+def safe_input(prompt, default=""):
+    """Wrapper for input() to handle EOFError."""
+    try:
+        return input(prompt).strip()
+    except EOFError:
+        return default  # Provide a fallback value
+
 def process_user_input():
     """Main function to process user input and provide health-related suggestions."""
     # Load models and vectorizers
@@ -46,7 +53,7 @@ def process_user_input():
 
     # Loop until a valid symptom input is given
     while True:
-        user_input = input("Please tell me your symptoms (e.g., headache, fever, etc.): ").strip()
+        user_input = safe_input("Please tell me your symptoms (e.g., headache, fever, etc.): ", default="fever")
 
         # Check if input contains only numbers
         if re.fullmatch(r'\d+', user_input):
@@ -80,7 +87,7 @@ def process_user_input():
 
     # Get OTC medicines
     otc_medicines = []  # Initialize to an empty list
-    otc_choice = input("Do you want to know about OTC medicines for this? (yes/no): ").lower()
+    otc_choice = safe_input("Do you want to know about OTC medicines for this? (yes/no): ", default="no").lower()
 
     if otc_choice == 'yes':
         otc_medicines = get_otc_for_disease(disease, otc_df)
@@ -96,7 +103,7 @@ def process_user_input():
         print("Invalid input. Please enter 'yes' or 'no'.")
 
     # Get user's location for nearby medical services
-    location = input("Please provide your address or city for nearby medical services: ")
+    location = safe_input("Please provide your address or city for nearby medical services: ", default="New York")
     lat, lng = geolocation_model.get_geolocation(location)
     if lat and lng:
         services_model.get_nearby_services(lat, lng)
@@ -105,3 +112,4 @@ def process_user_input():
 
 # Start the conversation loop
 process_user_input()
+
